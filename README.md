@@ -1,5 +1,7 @@
 # Mean Reversion Backtester
 
+**Live application:** [Open Mean Reversion Backtester](https://mean-reversion-backtester.onrender.com) · [Source code](https://github.com/subhashdixit/mean-reversion-backtester)
+
 A Flask application for exploring a **long-or-cash, rule-based mean reversion strategy**. Upload dated closing prices, compare net strategy returns with buy-and-hold, inspect drawdowns and download the calculation. There is no trained machine-learning model in this project.
 
 The bundled demonstration is **synthetic**, generated from a fixed random seed. It is not HAPPSTMNDS or any other traded security, and its returns are not evidence of real investment performance. The original finance notebook remains in the repository for historical learning context.
