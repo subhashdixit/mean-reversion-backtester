@@ -1,0 +1,1 @@
+The original finance notebook remains in the repository root. It uses HAPPSTMNDS.NS data fetched through yfinance and full-sample ratio thresholds. The new app uses causal rolling thresholds, delayed long/cash exposure and explicit costs. The included prices are a synthetic simulation, not a cached market dataset.
