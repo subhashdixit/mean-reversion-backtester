@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "repository": "mean-reversion-backtester",
+  "recommended_python": "3.11.11",
+  "resolver": "uv==0.13.6",
+  "files": [
+    {
+      "path": "requirements-dev.in",
+      "sha256": "f9c5dfa95578159677f4df7c664e23a5bae51cf8bd8409e96746a3d3a72cd95e"
+    },
+    {
+      "path": "requirements-dev.txt",
+      "sha256": "294f4e8649fd7d4882f596760ab18e4ea45e5175bfa2f759bed29a9f99b2f358"
+    },
+    {
+      "path": "requirements.in",
+      "sha256": "54a0771fb85ef939bee1257eb4c33eb30aca14a0700e506f888a6def241615cd"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "bed2a4c66c139f7785924969c09cd24469676c9eaa8417c9c733810c3edeec8c"
+    }
+  ]
+}
