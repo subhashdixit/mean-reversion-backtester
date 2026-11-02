@@ -170,3 +170,14 @@ For every release, compare readiness revision with GitHub main and run the HTTP 
 This is an educational backtesting app, not an investment recommendation or trading bot. Important extensions include walk-forward parameter selection, untouched future validation, realistic slippage/spread, corporate-action-aware data and sensitivity testing. They are not silently assumed to be present.
 
 References: [Flask deployment](https://flask.palletsprojects.com/en/stable/deploying/), [Render Flask guide](https://render.com/docs/deploy-flask), [GitHub Actions](https://docs.github.com/en/actions).
+
+## Exact local dependency versions
+
+[DEPENDENCIES.md](DEPENDENCIES.md) lists the pinned runtime, development and training environments. `requirements.txt` now explicitly records all external runtime package versions, including transitive dependencies.
+
+```bash
+python3.11 -m venv .venv
+# Activate: source .venv/bin/activate (Windows: .venv\Scripts\activate)
+python -m pip install -r requirements.txt
+python -m pip check
+```
