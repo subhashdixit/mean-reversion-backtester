@@ -34,7 +34,7 @@ def check(base, attempts, expected_revision=None):
                 raise ValueError("No backtest output")
             print("Readiness and real HTTP backtest passed:", base)
             return
-        except (URLError, TimeoutError, ValueError) as exc:
+        except (URLError, TimeoutError, ConnectionError, ValueError) as exc:
             if attempt + 1 == attempts:
                 raise SystemExit(str(exc)) from exc
             time.sleep(10)
