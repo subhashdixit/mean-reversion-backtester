@@ -1,12 +1,34 @@
 # Mean Reversion Backtester
 
-**Live application:** [Open Mean Reversion Backtester](https://mean-reversion-backtester.onrender.com) · [Source code](https://github.com/subhashdixit/mean-reversion-backtester)
+## 1. Project overview
 
-A Flask application for exploring a **long-or-cash, rule-based mean reversion strategy**. Upload dated closing prices, compare net strategy returns with buy-and-hold, inspect drawdowns and download the calculation. There is no trained machine-learning model in this project.
+Flask backtesting lab with past-only thresholds, delayed execution, transaction costs and a synthetic demonstration.
 
-The bundled demonstration is **synthetic**, generated from a fixed random seed. It is not HAPPSTMNDS or any other traded security, and its returns are not evidence of real investment performance. The original finance notebook remains in the repository for historical learning context.
+[Live demo](https://mean-reversion-backtester.onrender.com) · [Source repository](https://github.com/subhashdixit/mean-reversion-backtester)
 
-## Problem and user journey
+![Mean Reversion Backtester application screen](docs/images/application.png)
+
+*Main screen captured from a local run.*
+
+## 2. Motivation and problem statement
+
+### Objective
+
+Compare a historical long-or-cash mean-reversion rule with buy-and-hold after costs.
+
+### Problem statement
+
+A backtest can overstate performance if it uses information before a trade could execute or ignores turnover costs.
+
+### Motivation
+
+Delayed execution and an explicit benchmark make the test assumptions visible.
+
+## 3. Solution and scope
+
+**Inputs** — Dated closing prices and strategy parameters. **Outputs** — Net equity, drawdowns and downloadable results.
+
+### Problem and user journey
 
 A price can move away from its recent average. A mean reversion rule asks whether buying after a relatively low deviation and returning to cash after a relatively high deviation would have worked historically. This is a research question, not an assumption that prices must return to an average.
 
@@ -27,7 +49,78 @@ flowchart LR
  G --> H[Equity / drawdown / benchmark / CSV]
 ```
 
-## Strategy mathematics, without hidden look-ahead
+### Scope
+
+This is an educational backtesting app, not an investment recommendation or trading bot. Important extensions include walk-forward parameter selection, untouched future validation, realistic slippage/spread, corporate-action-aware data and sensitivity testing. They are not silently assumed to be present.
+
+References: [Flask deployment](https://flask.palletsprojects.com/en/stable/deploying/), [Render Flask guide](https://render.com/docs/deploy-flask), [GitHub Actions](https://docs.github.com/en/actions).
+
+## 4. Quick start and usage
+
+Start with the documented sample or supported input. Review the output and any validation feedback. Open the live demo above or use the local setup below.
+
+## 5. High-level architecture
+
+```mermaid
+flowchart LR
+    A["User input"] --> B["Interface"] --> C["Application service"] --> D["Result"]
+```
+
+## 6. End-to-end request workflow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Project interface
+    participant Engine as Application service
+    User->>UI: Provide Dated closing prices and strategy parameters
+    UI->>Engine: Process validated input
+    Engine->>Engine: Compute past-only signals, delay execution and apply costs
+    Engine-->>UI: Net equity, drawdowns and downloadable results
+    UI-->>User: Present result or input feedback
+```
+
+## 7. Data sources, inputs, and outputs
+
+| Input | Processing | Output |
+| --- | --- | --- |
+| Dated closing prices and strategy parameters | Compute past-only signals, delay execution and apply costs | Net equity, drawdowns and downloadable results |
+
+### Data contract
+
+CSV or JSON records require `date` and `close`. Use ISO dates (`2024-01-02`), one unique date per observation, increasing order and positive finite prices. Between 50 and 5,000 rows are accepted, subject to the longer minimum needed for your chosen windows. Intraday timestamps and timezone-aware dates are rejected. The app never invents missing closes.
+
+For actual equities, decide consistently whether prices are split/dividend adjusted. A split in unadjusted data can create false returns. Record vendor, download date, adjustment choice, currency and usage rights. The app does not download live prices or identify an instrument from an anonymous CSV.
+
+## 8. Data flow and ETL pipeline
+
+```mermaid
+flowchart LR
+    A["Dated closing prices and strategy parameters"] --> B["Compute past-only signals, delay execution and apply costs"] --> C["Net equity, drawdowns and downloadable results"]
+```
+
+## 9. Low-level design and interfaces
+
+Implementation entry points are [`wsgi.py`](<wsgi.py>), [`scripts/prepare_example.py`](<scripts/prepare_example.py>), [`src/backtester/core.py`](<src/backtester/core.py>), [`src/backtester/web.py`](<src/backtester/web.py>).
+
+### API and exports
+
+```bash
+curl -s http://127.0.0.1:8000/health/ready
+curl -s http://127.0.0.1:8000/sample.csv -o prices.csv
+```
+
+`POST /api/backtest` accepts a JSON object with a `records` array and optional `parameters` object, for example:
+
+```json
+{"records":[{"date":"2024-01-01","close":100}],"parameters":{"window":21,"lookback":126,"lower":0.15,"upper":0.85,"cost_bps":10,"periods_per_year":252}}
+```
+
+That single-record example illustrates the schema and will deliberately fail the minimum-history validation. Supply a full valid history. The response contains `report` (including parameters), a per-date `curve`, and costs/benchmark results. The interface offers CSV export and PNG charts. Upload limits and bounded computation keep the public demo manageable; there is no persistent user account or price database.
+
+## 10. Concepts and algorithms
+
+### Strategy mathematics, without hidden look-ahead
 
 For close price `P[t]` and window `w`, the moving average is `SMA[t] = mean(P[t-w+1:t])`. The deviation ratio is `R[t] = P[t]/SMA[t]`. A ratio below 1 means the current price is below its recent average; it does not necessarily mean the asset is cheap.
 
@@ -54,7 +147,15 @@ equity[t] = equity[t-1] * net_growth[t]
 
 Terminal liquidation also incurs a cost. Buy-and-hold is evaluated over the same post-calibration period with entry and exit costs. This is still a simplified close-price backtest: spread, intraday execution, financing, taxes, dividends, market impact and failed fills are not modeled separately.
 
-## Metrics and what they miss
+## 11. Technology choices and dependencies
+
+- **Flask**. Share the same service across interactive and HTTP entry points.
+
+[Dependency versions and runtime rationale](DEPENDENCIES.md)
+
+## 12. Training, inference, and evaluation
+
+### Metrics and what they miss
 
 | Measure | Calculation / interpretation | Limitation |
 |---|---|---|
@@ -66,13 +167,27 @@ Terminal liquidation also incurs a cost. Buy-and-hold is evaluated over the same
 
 The annualization default is 252 for daily trading observations. Change it for a different observed frequency; the app does not infer an exchange calendar. Zero volatility yields an undefined Sharpe instead of infinity. Cash earns zero. There is no independent out-of-sample claim: choosing parameters after viewing a chart can overfit this historical sample.
 
-## Data contract
+### Tests and reproducibility
 
-CSV or JSON records require `date` and `close`. Use ISO dates (`2024-01-02`), one unique date per observation, increasing order and positive finite prices. Between 50 and 5,000 rows are accepted, subject to the longer minimum needed for your chosen windows. Intraday timestamps and timezone-aware dates are rejected. The app never invents missing closes.
+```bash
+python -m black --check src scripts tests wsgi.py gunicorn.conf.py
+python -m pylint src scripts wsgi.py gunicorn.conf.py
+python -m pytest -q
+python scripts/smoke_test.py --url http://127.0.0.1:8000 --attempts 3
+python scripts/prepare_example.py
+```
 
-For actual equities, decide consistently whether prices are split/dividend adjusted. A split in unadjusted data can create false returns. Record vendor, download date, adjustment choice, currency and usage rights. The app does not download live prices or identify an instrument from an anonymous CSV.
+The tests check that changing future prices cannot change earlier signals; signals receive the two-observation execution delay; higher costs do not improve the same strategy; initial capital is included in drawdown; date/input failures are rejected; and form, JSON, CSV and PNG routes work. These are checks of implementation, not proof of financial profitability. The synthetic generator is deterministic and is not a real-data ingestion pipeline.
 
-## Run locally
+Validation code is available in [`tests/test_backtester.py`](<tests/test_backtester.py>), [`tests/test_smoke_retry.py`](<tests/test_smoke_retry.py>).
+
+## 13. Limitations and data handling
+
+Use the project within the scope of its documented inputs, datasets, and evaluation.
+
+## 14. Installation and local setup
+
+### Run locally
 
 Use Python 3.10 or 3.11:
 
@@ -107,34 +222,27 @@ render.yaml                 free-plan service definition
 .github/workflows/ci.yml    two Python versions and container check
 ```
 
-## API and exports
+### Exact local dependency versions
+
+[DEPENDENCIES.md](DEPENDENCIES.md) lists the pinned runtime, development and training environments. `requirements.txt` now explicitly records all external runtime package versions, including transitive dependencies.
 
 ```bash
-curl -s http://127.0.0.1:8000/health/ready
-curl -s http://127.0.0.1:8000/sample.csv -o prices.csv
+python3.11 -m venv .venv
+# Activate: source .venv/bin/activate (Windows: .venv\Scripts\activate)
+python -m pip install -r requirements.txt
+python -m pip check
 ```
 
-`POST /api/backtest` accepts a JSON object with a `records` array and optional `parameters` object, for example:
+## 15. Repository structure
 
-```json
-{"records":[{"date":"2024-01-01","close":100}],"parameters":{"window":21,"lookback":126,"lower":0.15,"upper":0.85,"cost_bps":10,"periods_per_year":252}}
-```
+- [`wsgi.py`](<wsgi.py>)
+- [`scripts/prepare_example.py`](<scripts/prepare_example.py>)
+- [`src/backtester/core.py`](<src/backtester/core.py>)
+- [`src/backtester/web.py`](<src/backtester/web.py>)
 
-That single-record example illustrates the schema and will deliberately fail the minimum-history validation. Supply a full valid history. The response contains `report` (including parameters), a per-date `curve`, and costs/benchmark results. The interface offers CSV export and PNG charts. Upload limits and bounded computation keep the public demo manageable; there is no persistent user account or price database.
+## 16. Deployment and operations
 
-## Tests and reproducibility
-
-```bash
-python -m black --check src scripts tests wsgi.py gunicorn.conf.py
-python -m pylint src scripts wsgi.py gunicorn.conf.py
-python -m pytest -q
-python scripts/smoke_test.py --url http://127.0.0.1:8000 --attempts 3
-python scripts/prepare_example.py
-```
-
-The tests check that changing future prices cannot change earlier signals; signals receive the two-observation execution delay; higher costs do not improve the same strategy; initial capital is included in drawdown; date/input failures are rejected; and form, JSON, CSV and PNG routes work. These are checks of implementation, not proof of financial profitability. The synthetic generator is deterministic and is not a real-data ingestion pipeline.
-
-## CI/CD, Docker and Render
+### CI/CD, Docker and Render
 
 ```mermaid
 flowchart LR
@@ -165,19 +273,6 @@ For every release, compare readiness revision with GitHub main and run the HTTP 
 
 **Version and rollback:** Git versions source, the sample and configuration. Tag known-good releases. Revert a faulty change in a new PR so the pipeline rebuilds the corrected main history, or select a previous successful deploy in Render and verify it. A rollback should restore matching dependency/configuration assumptions; it does not undo external market actions (this app executes none). Retraining is not applicable because this is a deterministic rule-based strategy.
 
-## Scope
+## 17. License, credits, and support
 
-This is an educational backtesting app, not an investment recommendation or trading bot. Important extensions include walk-forward parameter selection, untouched future validation, realistic slippage/spread, corporate-action-aware data and sensitivity testing. They are not silently assumed to be present.
-
-References: [Flask deployment](https://flask.palletsprojects.com/en/stable/deploying/), [Render Flask guide](https://render.com/docs/deploy-flask), [GitHub Actions](https://docs.github.com/en/actions).
-
-## Exact local dependency versions
-
-[DEPENDENCIES.md](DEPENDENCIES.md) lists the pinned runtime, development and training environments. `requirements.txt` now explicitly records all external runtime package versions, including transitive dependencies.
-
-```bash
-python3.11 -m venv .venv
-# Activate: source .venv/bin/activate (Windows: .venv\Scripts\activate)
-python -m pip install -r requirements.txt
-python -m pip check
-```
+The repository does not contain a root LICENSE file. Check upstream and data-source terms before reuse. Report reproducible issues through [GitHub Issues](https://github.com/subhashdixit/mean-reversion-backtester/issues).
